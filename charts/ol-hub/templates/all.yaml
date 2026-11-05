@@ -1,0 +1,112 @@
+{{- $g := .Values.global }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: {{ .Values.name }}}
+  template:
+    metadata:
+      labels: {app: {{ .Values.name }}}
+    spec:
+      # no <SVC>_PORT=tcp://... env from the namespace's Services: it collides with the gateway's own
+      # <APP>_PORT vars (HUB-EMBEDDED-GATEWAY-RUNBOOK.md, "invalid port in upstream")
+      enableServiceLinks: false
+      {{- with $g.imagePullSecret }}
+      imagePullSecrets: [{name: {{ . }}}]
+      {{- end }}
+      containers:
+        - name: hub
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          {{- with .Values.javaOpts }}
+          args: ["", {{ . | quote }}]
+          {{- end }}
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: auth, containerPort: 9095}
+            - {name: flags, containerPort: 9096}
+            - {name: notify, containerPort: 9097}
+          envFrom:
+            - secretRef: {name: {{ $g.dbSecret }}}
+          env:
+{{ include "ol-hub.env" . | indent 12 }}
+          # nginx opens 8080 before the JVM is up; /health answers 200 only once the JVM does
+          startupProbe:
+            httpGet: {path: /health, port: 8080}
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /health, port: 8080}
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /health, port: 8080}
+            periodSeconds: 20
+            failureThreshold: 3
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+spec:
+  selector: {app: {{ .Values.name }}}
+  ports:
+    - {name: http, port: 80, targetPort: 8080}
+    - {name: http-8080, port: 8080, targetPort: 8080}
+    - {name: auth, port: 9095, targetPort: 9095}
+    - {name: flag, port: 9096, targetPort: 9096}
+    - {name: notify, port: 9097, targetPort: 9097}
+{{- if .Values.route.enabled }}
+---
+# Public origin of the Hub shell and every mounted app (the gateway route)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+  annotations:
+    haproxy.router.openshift.io/timeout: {{ .Values.route.timeout }}
+spec:
+  host: {{ $g.hubHost }}
+  to: {kind: Service, name: {{ .Values.name }}}
+  port: {targetPort: http}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}
+{{- end }}
+{{- if .Values.migration.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.name }}-migrate
+  labels: {app: {{ .Values.name }}-migrate}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels: {app: {{ .Values.name }}-migrate}
+    spec:
+      restartPolicy: Never
+      {{- with $g.imagePullSecret }}
+      imagePullSecrets: [{name: {{ . }}}]
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args: [migrate, {{ .Values.javaOpts | quote }}]
+          envFrom:
+            - secretRef: {name: {{ $g.dbSecret }}}
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 1Gi}
+{{- end }}

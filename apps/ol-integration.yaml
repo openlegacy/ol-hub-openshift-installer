@@ -1,0 +1,44 @@
+# OL-Integration 4.0.0 - the product/designer half attached to the Hub (ONPREM-SPLIT-RUNBOOK.md, CONTRACT.md §1).
+# Serves /backend, /dt-engine, /runtime, /solution-center and the designer remote through the Hub gateway.
+# Migrates its own schemas on start. Shares the Hub's secrets (internal key, encrypt secret, API-key signing key).
+name: ol-integration
+containerPort: 8080
+service:
+  ports:
+    - {name: http, port: 80, targetPort: 8080}
+    - {name: auth-port, port: 9095, targetPort: 9095}
+probes: {path: /health}
+resources:
+  requests: {cpu: 250m, memory: 1Gi}
+  limits: {memory: 3Gi}
+env:
+  LAUNCHER_CLASS: io.ol.hub.enterprise.consumer.ConsumerLauncherKt
+  MAIN_CLASS: io.ol.hub.enterprise.consumer.ConsumerMainVerticle
+  OL_HUB_URL: "https://{{ .Values.global.hubHost }}"
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  HUB_IAM_URL: "{{ .Values.global.keycloakInternal }}/realms/ol-hub"
+  BACKOFFICE_IAM_URL: "{{ .Values.global.keycloakInternal }}/realms/ol-hub"
+  KEYCLOAK_BASE_URL: "https://{{ .Values.global.keycloakService }}"
+  KEYCLOAK_MANAGEMENT_CLIENT_ID: hub-client
+  AUTH_SERVICE_URL: "{{ .Values.global.hubInternal }}/auth-service"
+  BACKOFFICE_SERVICE_URL: "{{ .Values.global.hubInternal }}/backoffice"
+  FLAGS_ROUTER_SERVICE_URL: "{{ .Values.global.hubInternal }}/flags-router"
+  AUDIT_SERVICE_URL: "{{ .Values.global.hubInternal }}/audit"
+  OL_AUTH_SERVICE_INTERNAL_URL: "{{ .Values.global.hubInternal }}"
+  OL_AUTH_SERVICE_INTERNAL_PORT: "9095"
+  OL_FLAGS_ROUTER_INTERNAL_URL: "{{ .Values.global.hubInternal }}"
+  OL_FLAGS_ROUTER_INTERNAL_PORT: "9096"
+  OL_NOTIFICATIONS_INTERNAL_URL: "{{ .Values.global.hubInternal }}"
+  OL_NOTIFICATIONS_INTERNAL_PORT: "9097"
+  OL_BACKEND_INTERNAL_PORT: "9095"
+  OL_INTERNAL_SERVICE_SECRET_ENFORCED: "true"
+  OL_RBAC_READ_SOURCE: legacy
+  OL_RBAC_WRITE_SOURCE: legacy
+  OL_TOKEN_REVOCATION_ENABLED: "false"
+  OL_PREMIUM_CLASSIFICATION_MODE: ENFORCE
+  OL_SCREEN_PORT: "1512"
+secretEnv:
+  OL_INTERNAL_SERVICE_SECRET: {secret: "{{ .Values.global.hubSecret }}", key: OL_INTERNAL_SERVICE_SECRET}
+  OL_HUB_ENCRYPT_SECRET: {secret: "{{ .Values.global.hubSecret }}", key: OL_HUB_ENCRYPT_SECRET}
+  OL_HUB_PK_API_KEY_SIGN: {secret: "{{ .Values.global.hubSecret }}", key: OL_HUB_PK_API_KEY_SIGN}
+  KEYCLOAK_MANAGEMENT_CLIENT_SECRET: {secret: "{{ .Values.global.hubSecret }}", key: KEYCLOAK_MANAGEMENT_CLIENT_SECRET}

@@ -1,0 +1,6 @@
+# generated per install - never commit
+generated/
+install.conf
+# master-licence keys
+*.jwt
+master-license*

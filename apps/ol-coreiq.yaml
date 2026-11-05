@@ -1,0 +1,28 @@
+# CoreIQ 1.7.4 (COREIQ-RUNBOOK.md). Hub remote /remotes/ol-coreiq (Hub image 17fe9420... or later). Own schema coreiq.
+# /health is the unauthenticated probe (/api/health answers 401 with Hub sign-in on).
+# Do not set OL_HUB_IAM_* next to KEYCLOAK_* (they win when set), OL_TOOL_LICENSE or OL_HUB_API_KEY.
+name: ol-coreiq
+serviceName: coreiq              # Service name from before the ol- prefix (gateway upstream)
+containerPort: 8090
+probes: {path: /health}
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 1536Mi}
+emptyDirs: [/tmp]
+env:
+  PORT: "8090"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakInternal }}"
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  OL_HUB_BACKOFFICE_URL: "{{ .Values.global.hubInternal }}/backoffice"
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  OL_MCP_BASE_URL: "https://{{ .Values.global.hubHost }}/coreiq"   # MCP through the Hub gateway
+  OL_DB_SCHEMA: coreiq
+  JAVA_OPTS: -Xmx1024m -Xms256m
+secretEnv:
+  # unset, the entrypoint generates a random key on every start
+  CREDENTIAL_ENCRYPTION_KEY: {secret: coreiq-secrets, key: CREDENTIAL_ENCRYPTION_KEY}
+  ADMIN_PASSKEY: {secret: coreiq-secrets, key: ADMIN_PASSKEY}
+  OL_ADMIN: {secret: coreiq-secrets, key: OL_ADMIN}
+  OL_PASSWORD: {secret: coreiq-secrets, key: OL_PASSWORD}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ol-hub
+description: OpenLegacy Hub 4.0.0 with the embedded multi-app gateway (one pod - nginx on 8080 in front of the Hub JVM)
+type: application
+version: 1.0.0
+appVersion: "4.0.0"

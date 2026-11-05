@@ -1,0 +1,13 @@
+# Service name is fixed: every runbook and app default points at hub-enterprise-postgres:5432.
+name: hub-enterprise-postgres
+image: public.ecr.aws/docker/library/postgres:17
+imagePullPolicy: IfNotPresent
+storage:
+  size: 20Gi
+  storageClass: ""        # empty = cluster default
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 2Gi}
+global:
+  dbSecret: ol-db         # keys OL_DB_USER / OL_DB_PASSWORD (created by install.sh)
+  imagePullSecret: ""

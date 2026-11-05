@@ -1,0 +1,29 @@
+# OL Code 3.0.41 (OL-CODE-RUNBOOK.md). Hub remote /remotes/olcode (needs the embedded-gateway Hub image with
+# the OL Code route) + its own Route for the standalone SPA.
+name: ol-code
+containerPort: 9091
+probes: {path: /health}
+route:
+  enabled: true
+resources:
+  requests: {cpu: 100m, memory: 768Mi}
+  limits: {memory: 2Gi}
+persistence:
+  enabled: true
+  size: 5Gi
+  mounts: [{path: /usr/app}]    # user.home: .ol-code and .openlegacy
+emptyDirs: [/tmp]
+env:
+  WORKING_MODE: HUB_INTEGRATION
+  OLCODE_MIGRATE_ON_START: "true"
+  OL_HUB_BASE_URL: "{{ .Values.global.hubInternal }}"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakPublic }}"   # browser-facing (login redirect) and JWKS
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  OL_MCP_OAUTH_BASE_URL: "https://{{ index .Values.global.appHosts \"ol-code\" }}"   # MCP on its own Route
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError   # the entrypoint ignores JAVA_OPTS
+secretEnv:
+  OL_PASSWORD: {secret: ol-code-secrets, key: OL_PASSWORD}
+  # 64 hex chars; keep it stable - stored credentials are encrypted with it
+  CREDENTIAL_ENCRYPTION_KEY: {secret: ol-code-secrets, key: CREDENTIAL_ENCRYPTION_KEY}

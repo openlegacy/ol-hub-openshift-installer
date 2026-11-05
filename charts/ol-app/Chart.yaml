@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ol-app
+description: Universal chart for every optional OpenLegacy app beside the Hub (one Deployment, Service, optional Route/PVC). One values file per app in apps/.
+type: application
+version: 1.0.0

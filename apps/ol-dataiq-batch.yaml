@@ -1,0 +1,25 @@
+# DataIQ batch worker 1.6.7 (DATAIQ-BATCH-RUNBOOK.md). Called by DataIQ with a shared API key.
+# Spring Batch metadata goes to schema "batch" (auto-created). Its own DB variable names -> dbEnv.
+name: ol-dataiq-batch
+serviceName: dataiq-batch              # Service name from before the ol- prefix (gateway upstream)
+containerPort: 8089
+probes: {path: /actuator/health}
+route:
+  enabled: true            # DataIQ's "View job" link; the API itself requires the shared key
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 1536Mi}
+envFromDb: false
+emptyDirs: [/tmp]
+env:
+  SERVER_PORT: "8089"
+  BATCH_META_DATASOURCE_URL: "jdbc:postgresql://{{ .Values.global.db.host }}:{{ .Values.global.db.port }}/{{ .Values.global.db.name }}"
+  BATCH_IMPORT_WRITER_DATASOURCE_URL: "jdbc:postgresql://{{ .Values.global.db.host }}:{{ .Values.global.db.port }}/{{ .Values.global.db.name }}?reWriteBatchedInserts=true"
+  BATCH_CONTROL_ENABLED: "false"   # the stop endpoint is unauthenticated
+dbEnv:
+  BATCH_META_DATASOURCE_USERNAME: OL_DB_USER
+  BATCH_META_DATASOURCE_PASSWORD: OL_DB_PASSWORD
+  BATCH_IMPORT_WRITER_DATASOURCE_USERNAME: OL_DB_USER
+  BATCH_IMPORT_WRITER_DATASOURCE_PASSWORD: OL_DB_PASSWORD
+secretEnv:
+  BATCH_SERVICE_API_KEY: {secret: dataiq-batch-secrets, key: api-key}

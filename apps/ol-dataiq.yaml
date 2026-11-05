@@ -1,0 +1,33 @@
+# OL-DataIQ 1.6.7 (DATAIQ-ONPREM-RUNBOOK.md). Hub remote /remotes/dataiq. Service dataiq-service (CONTRACT.md §1).
+# Needs ol-integration and ol-dataiq-batch. Its tenant schemas: OL_DB_SCHEMA=dataiq + dataiq_<tenant>.
+name: ol-dataiq
+serviceName: dataiq-service
+containerPort: 9092
+probes: {path: /health}
+resources:
+  requests: {cpu: 100m, memory: 1Gi}
+  limits: {memory: 2Gi}
+persistence:
+  enabled: true
+  size: 5Gi
+  mounts: [{path: /usr/app/.dataiq}]   # local encryption key + operator JDBC drivers (.dataiq/jars)
+emptyDirs: [/tmp]
+env:
+  WORKING_MODE: HUB_INTEGRATION
+  OL_DB_SCHEMA: dataiq
+  OL_HUB_BASE_URL: "{{ .Values.global.hubInternal }}"       # no path: the licence check calls /backoffice under it
+  # Public route, as for ol-code/ol-terminal: DataIQ republishes Keycloak's discovery to MCP clients, and
+  # Keycloak names the issuer after the host it was called on (internal = unreachable from outside)
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakPublic }}"
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  OL_MCP_OAUTH_BASE_URL: "https://{{ .Values.global.hubHost }}/dataiq-backend"   # MCP through the Hub gateway
+  BACKOFFICE_SERVICE_URL: "{{ .Values.global.hubInternal }}/backoffice"
+  BACKEND_SERVICE_URL: http://ol-integration/backend
+  # The batch worker's Route, so DataIQ's "View job" link opens from a browser (as on a-one)
+  BATCH_SERVICE_URL: "https://{{ index .Values.global.appHosts \"ol-dataiq-batch\" }}"
+secretEnv:
+  BATCH_SERVICE_API_KEY: {secret: dataiq-batch-secrets, key: api-key}
+  OL_HUB_DB_ENCRYPTION_SECRET: {secret: dataiq-secrets, key: db-encryption-secret}

@@ -1,0 +1,28 @@
+# OL-Spec 1.1.8 (OL-SPEC-RUNBOOK.md). Hub remote /remotes/olspec + /olspec-backend (unbuffered).
+# Service name olspec (CONTRACT.md §1). The volume holds master.key: back it up with the database.
+# Do not set HUB_IAM_URL (boot fails next to Keycloak), OL_HUB_API_KEY or OL_TOOL_LICENSE.
+name: ol-spec
+serviceName: olspec              # Service name from before the ol- prefix (gateway upstream)
+containerPort: 3008
+probes: {path: /health}
+resources:
+  requests: {cpu: 100m, memory: 768Mi}
+  limits: {memory: 2Gi}
+persistence:
+  enabled: true
+  size: 5Gi
+  mounts: [{path: /usr/app/.olspec}]
+emptyDirs: [/usr/app/.cache, /tmp]
+env:
+  WORKING_MODE: HUB_INTEGRATION
+  OL_OLSPEC_MIGRATE_ON_START: "true"
+  APP_PORT: "3008"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakInternal }}"
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  KEYCLOAK_ISSUER: "{{ .Values.global.issuer }}"
+  OL_HUB_BASE_URL: "{{ .Values.global.hubInternal }}"       # no path
+  SERVER_MAX_BODY_SIZE: "104857600"
+  BACKEND_CORS_ORIGINS: "*"
+  JAVA_OPTS: -Xmx1536m -Xms256m

@@ -1,0 +1,49 @@
+# OpenLegacy Hub on OpenShift - installer configuration.
+# Copy to install.conf and edit. Everything not set here is derived from the cluster or generated.
+# The installer asks for NAMESPACE and APPS when they are missing and it runs in a terminal.
+
+# Namespace (created if missing)
+NAMESPACE=ol-hub
+
+# Optional apps to install, space separated. Mandatory components (postgres, keycloak, hub) are always installed.
+# Available: ol-integration ol-termiq ol-dataiq ol-dataiq-batch ol-appiq ol-next ol-spec ol-code ol-terminal ol-coreiq ol-atomiq
+# (the old names termiq, dataiq, dataiq-batch, appiq, coreiq, atomiq are still accepted)
+# Dependencies are added automatically (ol-termiq/ol-dataiq/ol-appiq -> ol-integration, ol-dataiq -> ol-dataiq-batch).
+APPS="ol-integration ol-termiq ol-next"
+
+# Tenant: a fresh Hub has none. With a master-licence key from OpenLegacy (a signed JWT, licenseType MASTER) the
+# installer creates the tenant + its master licence right after the Hub migration. Without it, no tenant is
+# created and the apps refuse requests until one exists (add it later: ./install.sh create-tenant).
+MASTER_LICENSE_FILE=
+TENANT_ORGANIZATION=OpenLegacy
+# Contact person stored on the tenant (any name or e-mail)
+TENANT_CONTACT=
+# Email of the Keycloak admin user ol-hub (default admin@openlegacy.com; empty = none)
+HUB_ADMIN_EMAIL=admin@openlegacy.com
+# Tenant id (default: 4a6bfc5d-3bae-45a3-99b9-d1e255875adb, the built-in tenant whose admin
+# - Keycloak user ol-hub - the Hub and OL-Integration seed)
+TENANT_ID=
+
+# --- Optional overrides (leave empty to derive) -----------------------------------------------
+# Cluster apps domain (default: oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}')
+APPS_DOMAIN=
+# Public host names (default: <name>-<namespace>.<APPS_DOMAIN>)
+HUB_HOST=
+KEYCLOAK_HOST=
+# Storage class for PVCs (default: the cluster default)
+STORAGE_CLASS=
+# Extra hub-spa redirect URIs, space separated (the Hub and app routes are added automatically)
+EXTRA_REDIRECT_URIS=
+
+# External Postgres instead of the bundled one: set DB_HOST and DB_PASSWORD (the user needs CREATEDB-level
+# rights on DB_NAME to create schemas).
+DB_HOST=
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=
+
+# Pull secret for private registries (an existing kubernetes.io/dockerconfigjson secret in NAMESPACE)
+IMAGE_PULL_SECRET=
+
+# Image overrides, e.g. IMAGE_OL_INTEGRATION=..., see images.conf

@@ -1,0 +1,114 @@
+# Service name is fixed: every runbook's default Hub URL is http://ol-hub (80 -> nginx 8080).
+name: ol-hub
+image: public.ecr.aws/openlegacy/hub/ol-hub:4.0.0-embedded-gateway
+imagePullPolicy: IfNotPresent
+resources:
+  requests: {cpu: 250m, memory: 1Gi}
+  limits: {memory: 3Gi}
+javaOpts: ""               # passed as the entrypoint's 2nd argument, e.g. "-Xmx2g"
+route:
+  enabled: true
+  timeout: 900s            # OL-Spec AI jobs stream with no heartbeat
+migration:
+  enabled: true            # pre-install/pre-upgrade Job: entrypoint "migrate" (schemas audit, auth, operational, ...)
+
+# Hub env that is the same on every install (values may use {{ .Values.global.* }})
+env:
+  HUB_ENVIRONMENT_NAME: onprem
+  OL_HUB_REGION: onprem
+  OL_HUB_URL: "https://{{ .Values.global.hubHost }}"
+  OL_TOKEN_REVOCATION_ENABLED: "false"
+  # RBAC: "hub" (auth.tenant_user_role) without OL-Integration; integrations.ol-integration switches both to
+  # "legacy" (OL-Integration's data_<tenant> is then the authority). legacy without OL-Integration sends every
+  # role lookup back to the Hub itself -> 503 "Could not resolve the tenant role". The two move together
+  # (RbacSwitches refuses write=hub with read!=hub); detaching OL-Integration later is not supported.
+  OL_RBAC_READ_SOURCE: hub
+  OL_RBAC_WRITE_SOURCE: hub
+  OL_INTERNAL_SERVICE_SECRET_ENFORCED: "true"
+  # Browser login origin (the Hub SPA's authDomain) and the in-cluster realm for JWKS / admin calls
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  HUB_IAM_URL: "https://{{ .Values.global.keycloakService }}/auth/realms/ol-hub"
+  BACKOFFICE_IAM_URL: "https://{{ .Values.global.keycloakService }}/auth/realms/ol-hub"
+  KEYCLOAK_BASE_URL: "https://{{ .Values.global.keycloakService }}"
+  KEYCLOAK_MANAGEMENT_CLIENT_ID: hub-client
+  # Embedded gateway (CONTRACT.md §2): an app's routes are on only while its <APP>_HOST is set
+  OL_HUB_EMBEDDED_GATEWAY: "true"
+  KEYCLOAK_HOST: "{{ .Values.global.keycloakService }}.{{ .Release.Namespace }}.svc.cluster.local"
+  KEYCLOAK_PORT: "443"
+
+# Secret env from global.hubSecret (generated once by install.sh, never rotated in place)
+secretEnv:
+  - OL_HUB_ENCRYPT_SECRET
+  - OL_HUB_PK_API_KEY_SIGN
+  - OL_INTERNAL_SERVICE_SECRET
+  - KEYCLOAK_MANAGEMENT_CLIENT_SECRET
+
+# Apps switched on in the Hub shell / gateway. install.sh sets apps.<name>=true after the app is Ready
+# (runbooks: set the Hub switch and the route together, after the app answers).
+apps:
+  ol-integration: false
+  ol-termiq: false
+  ol-dataiq: false
+  ol-appiq: false
+  ol-next: false
+  ol-spec: false
+  ol-code: false
+  ol-terminal: false
+  ol-coreiq: false
+  ol-atomiq: false
+
+# Hub env per app (CONTRACT.md §4, each app runbook's "Hub side" step)
+integrations:
+  ol-integration:
+    BACKEND_SERVICE_URL: http://ol-integration/backend
+    OL_RBAC_READ_SOURCE: legacy
+    OL_RBAC_WRITE_SOURCE: legacy
+    OL_RBAC_PARITY_ENABLED: "true"
+    OL_BACKEND_INTERNAL_URL: http://ol-integration
+    OL_BACKEND_INTERNAL_PORT: "9095"
+    OL_INTEGRATION_HOST: "ol-integration.{{ .Release.Namespace }}.svc.cluster.local"
+    OL_INTEGRATION_PORT: "80"
+  ol-termiq:
+    OL_TERMIQ_URL: /remotes/termiq
+    TERMIQ_HOST: "ol-termiq.{{ .Release.Namespace }}.svc.cluster.local"
+    TERMIQ_PORT: "80"
+  ol-dataiq:
+    DATAIQ_URL: /remotes/dataiq
+    DATAIQ_HOST: "dataiq-service.{{ .Release.Namespace }}.svc.cluster.local"
+    DATAIQ_PORT: "80"
+  ol-appiq:
+    APPIQ_URL: /remotes/appiq
+    APPIQ_HOST: "appiq.{{ .Release.Namespace }}.svc.cluster.local"
+    APPIQ_PORT: "80"
+  ol-next:
+    OL_NEXT_URL: /remotes/ol-next
+    OL_NEXT_HOST: "ol-next.{{ .Release.Namespace }}.svc.cluster.local"
+    OL_NEXT_PORT: "80"
+  ol-spec:
+    OL_SPEC_URL: /remotes/olspec
+    OL_SPEC_HOST: "olspec.{{ .Release.Namespace }}.svc.cluster.local"
+    OL_SPEC_PORT: "80"
+  ol-code:
+    OL_CODE_URL: /remotes/olcode
+    OL_CODE_HOST: "ol-code.{{ .Release.Namespace }}.svc.cluster.local"
+    OL_CODE_PORT: "80"
+  ol-terminal:
+    # mounted from OL Terminal's own origin, not through the gateway: absolute https URL, no _HOST/_PORT
+    OL_TERMINAL_URL: "https://{{ index .Values.global.appHosts \"ol-terminal\" }}"
+  ol-coreiq:
+    COREIQ_URL: /remotes/ol-coreiq
+    COREIQ_HOST: "coreiq.{{ .Release.Namespace }}.svc.cluster.local"
+    COREIQ_PORT: "80"
+  ol-atomiq:
+    ATOMIQ_URL: /remotes/ol-atomiq
+    ATOMIQ_HOST: "atomiq.{{ .Release.Namespace }}.svc.cluster.local"
+    ATOMIQ_PORT: "80"
+
+global:
+  hubHost: hub.example.com
+  keycloakHost: keycloak.example.com
+  keycloakService: hub-enterprise-keycloak
+  appHosts: {}
+  dbSecret: ol-db
+  hubSecret: ol-hub-secrets
+  imagePullSecret: ""

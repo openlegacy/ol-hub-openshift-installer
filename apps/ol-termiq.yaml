@@ -1,0 +1,25 @@
+# TermIQ 1.0.5 (TERMIQ-RUNBOOK.md). Hub remote /remotes/termiq + /termiq-backend. Migrates termiq_<tenant> on start.
+# Service name ol-termiq: the Hub gateway's TERMIQ_HOST points at it (CONTRACT.md §1).
+name: ol-termiq
+containerPort: 8094
+probes: {path: /health}
+resources:
+  requests: {cpu: 100m, memory: 768Mi}
+  limits: {memory: 2Gi}
+env:
+  WORKING_MODE: HUB_INTEGRATION
+  OL_TERMIQ_MIGRATE_ON_START: "true"
+  OL_HUB_SERVER_PORT: "8094"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakInternal }}"
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  OL_MCP_OAUTH_BASE_URL: "https://{{ .Values.global.hubHost }}/termiq-backend"   # MCP through the Hub gateway
+  BACKOFFICE_SERVICE_URL: "{{ .Values.global.hubInternal }}/backoffice"
+  # OL-Integration, not the Hub (the Hub JVM answers /backend with 501)
+  BACKEND_SERVICE_URL: http://ol-integration/backend
+  OL_INTEGRATION_BASE_URL: http://ol-integration/backend
+  OL_AUTH_SERVICE_INTERNAL_URL: "{{ .Values.global.hubInternal }}"
+  OL_AUTH_SERVICE_INTERNAL_PORT: "9095"
+  OL_AI_ENABLED_KEY: "false"

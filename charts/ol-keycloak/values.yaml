@@ -1,0 +1,18 @@
+# Service name is fixed: apps fetch JWKS from https://hub-enterprise-keycloak/auth (443 -> 8443, self-signed).
+name: hub-enterprise-keycloak
+image: openlegacy/openlegacy-keycloak:26.8.0
+imagePullPolicy: IfNotPresent
+dbSchema: keycloak
+resources:
+  requests: {cpu: 200m, memory: 768Mi}
+  limits: {memory: 1536Mi}
+route:
+  enabled: true
+global:
+  keycloakHost: keycloak.example.com
+  hubHost: hub.example.com
+  dbSecret: ol-db
+  hubSecret: ol-hub-secrets          # KEYCLOAK_MANAGEMENT_CLIENT_SECRET = realm client hub-client
+  keycloakAdminSecret: ol-keycloak-admin
+  imagePullSecret: ""
+  db: {host: hub-enterprise-postgres, port: "5432", name: postgres}

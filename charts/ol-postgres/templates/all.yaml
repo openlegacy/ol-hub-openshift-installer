@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+  annotations:
+    helm.sh/resource-policy: keep    # never delete the database volume on uninstall
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.storage.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: {{ .Values.name }}}
+  template:
+    metadata:
+      labels: {app: {{ .Values.name }}}
+    spec:
+      {{- with .Values.global.imagePullSecret }}
+      imagePullSecrets: [{name: {{ . }}}]
+      {{- end }}
+      containers:
+        - name: postgres
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - {name: postgres, containerPort: 5432}
+          env:
+            - name: POSTGRES_USER
+              valueFrom: {secretKeyRef: {name: {{ .Values.global.dbSecret }}, key: OL_DB_USER}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.global.dbSecret }}, key: OL_DB_PASSWORD}}
+            - name: POSTGRES_DB
+              valueFrom: {secretKeyRef: {name: {{ .Values.global.dbSecret }}, key: OL_DB_NAME}}
+            # subdirectory: the volume root may hold lost+found, which initdb refuses
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec: {command: [sh, -c, 'pg_isready -U "$POSTGRES_USER" -h 127.0.0.1']}
+            periodSeconds: 10
+          livenessProbe:
+            exec: {command: [sh, -c, 'pg_isready -U "$POSTGRES_USER" -h 127.0.0.1']}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: run, mountPath: /var/run/postgresql}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: {{ .Values.name }}}
+        - name: run
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+spec:
+  selector: {app: {{ .Values.name }}}
+  ports:
+    - {name: postgres, port: 5432, targetPort: 5432}

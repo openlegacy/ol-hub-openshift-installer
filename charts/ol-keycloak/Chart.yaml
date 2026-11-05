@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ol-keycloak
+description: Keycloak (openlegacy-keycloak) with the ol-hub realm used by the Hub and every app
+type: application
+version: 1.0.0
+appVersion: "26.8.0"

@@ -1,0 +1,34 @@
+# OL-Next 1.7.0 (OL-NEXT-RUNBOOK.md). Hub remote /remotes/ol-next + /ol-next-backend.
+# The image defaults OL_DB_TYPE=h2 and needs OL_DB_URL for postgres. HOME is not writable: OL_DATA_DIR.
+name: ol-next
+containerPort: 8080
+service:
+  ports:
+    - {name: http, port: 80}
+    - {name: http-8080, port: 8080}    # OL_POD_URL=http://ol-next:8080
+probes: {path: /api}
+resources:
+  requests: {cpu: 100m, memory: 768Mi}
+  limits: {memory: 1536Mi}
+emptyDirs: [/data, /usr/app/.cache, /tmp]
+env:
+  WORKING_MODE: HUB_INTEGRATION
+  OL_POD_URL: http://ol-next:8080
+  OL_HUB_BASE_URL: "{{ .Values.global.hubInternal }}"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakInternal }}"
+  KEYCLOAK_ISSUER: "{{ .Values.global.issuer }}"
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  OL_MCP_OAUTH_BASE_URL: "https://{{ .Values.global.hubHost }}/ol-next-backend"   # MCP through the Hub gateway
+  # The five browser-reachable Hub URLs - all five or none (CONTRACT.md §5)
+  OL_HUB_PLATFORM_URL: "https://{{ .Values.global.hubHost }}"
+  OL_HUB_BACKEND_DOMAIN: "https://{{ .Values.global.hubHost }}/backend"
+  OL_HUB_AUTH_SERVICE_URL: "https://{{ .Values.global.hubHost }}/auth-service"
+  OL_HUB_BACKOFFICE_URL: "https://{{ .Values.global.hubHost }}/backoffice"
+  OL_HUB_RUNTIME_SERVICE_URL: "https://{{ .Values.global.hubHost }}/runtime"
+  OL_DB_URL: "jdbc:postgresql://{{ .Values.global.db.host }}:{{ .Values.global.db.port }}/{{ .Values.global.db.name }}"
+  OL_NEXT_MIGRATE_ON_START: "true"
+  OL_DATA_DIR: /data/ol-next
+  JAVA_OPTS: -Xmx1024m -Xms256m

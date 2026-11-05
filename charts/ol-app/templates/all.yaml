@@ -1,0 +1,150 @@
+{{- $root := . }}
+{{- $g := .Values.global }}
+{{- $svc := include "ol-app.svc" . }}
+{{- $pvc := default (printf "%s-data" .Values.name) .Values.persistence.claimName }}
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvc }}
+  labels: {app: {{ .Values.name }}}
+  annotations:
+    helm.sh/resource-policy: keep    # app state (keys, uploads) outlives an uninstall
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with $g.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+spec:
+  replicas: 1
+  # Recreate: RWO volumes, and single-replica apps that migrate their schema on start
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: {{ .Values.name }}}
+  template:
+    metadata:
+      labels: {app: {{ .Values.name }}}
+    spec:
+      # no <SVC>_PORT=tcp://... env from the namespace's Services: it collides with the gateway's own
+      # <APP>_PORT vars (HUB-EMBEDDED-GATEWAY-RUNBOOK.md, "invalid port in upstream")
+      enableServiceLinks: false
+      {{- with $g.imagePullSecret }}
+      imagePullSecrets: [{name: {{ . }}}]
+      {{- end }}
+      containers:
+        - name: {{ .Values.name }}
+          image: {{ required (printf "image is required for %s" .Values.name) .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          {{- with .Values.args }}
+          args: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - {name: http, containerPort: {{ .Values.containerPort }}}
+          {{- if or .Values.envFromDb .Values.envFromSecrets }}
+          envFrom:
+            {{- if .Values.envFromDb }}
+            - secretRef: {name: {{ $g.dbSecret }}}
+            {{- end }}
+            {{- range .Values.envFromSecrets }}
+            - secretRef: {name: {{ tpl . $root }}}
+            {{- end }}
+          {{- end }}
+          env:
+            {{- range $k := keys .Values.env | sortAlpha }}
+            - name: {{ $k }}
+              value: {{ tpl (toString (index $root.Values.env $k)) $root | quote }}
+            {{- end }}
+            {{- range $k := keys .Values.dbEnv | sortAlpha }}
+            - name: {{ $k }}
+              valueFrom: {secretKeyRef: {name: {{ $g.dbSecret }}, key: {{ index $root.Values.dbEnv $k }}}}
+            {{- end }}
+            {{- range $k := keys .Values.secretEnv | sortAlpha }}
+            {{- $s := index $root.Values.secretEnv $k }}
+            - name: {{ $k }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ tpl $s.secret $root }}
+                  key: {{ $s.key }}
+                  {{- if $s.optional }}
+                  optional: true
+                  {{- end }}
+            {{- end }}
+          startupProbe:
+            httpGet: {path: {{ .Values.probes.path }}, port: http}
+            periodSeconds: 5
+            failureThreshold: {{ .Values.probes.startupFailureThreshold }}
+          readinessProbe:
+            httpGet: {path: {{ .Values.probes.path }}, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: {{ .Values.probes.path }}, port: http}
+            periodSeconds: 20
+            failureThreshold: 3
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- if or (and .Values.persistence.enabled .Values.persistence.mounts) .Values.emptyDirs }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            {{- range .Values.persistence.mounts }}
+            - name: data
+              mountPath: {{ .path }}
+              {{- with .subPath }}
+              subPath: {{ . }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- range $i, $p := .Values.emptyDirs }}
+            - {name: scratch-{{ $i }}, mountPath: {{ $p }}}
+            {{- end }}
+          {{- end }}
+      {{- if or .Values.persistence.enabled .Values.emptyDirs }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim: {claimName: {{ $pvc }}}
+        {{- end }}
+        {{- range $i, $p := .Values.emptyDirs }}
+        - {name: scratch-{{ $i }}, emptyDir: {}}
+        {{- end }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $svc }}
+  labels: {app: {{ .Values.name }}}
+spec:
+  selector: {app: {{ .Values.name }}}
+  ports:
+    {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ default $root.Values.containerPort .targetPort }}
+    {{- end }}
+{{- if .Values.route.enabled }}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.name }}
+  labels: {app: {{ .Values.name }}}
+  {{- with .Values.route.timeout }}
+  annotations:
+    haproxy.router.openshift.io/timeout: {{ . }}
+  {{- end }}
+spec:
+  host: {{ include "ol-app.host" . }}
+  to: {kind: Service, name: {{ $svc }}}
+  port: {targetPort: {{ (first .Values.service.ports).name }}}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}
+{{- end }}

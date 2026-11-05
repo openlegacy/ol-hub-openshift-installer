@@ -1,0 +1,34 @@
+# OL Terminal 2.0.7.4 (OL-TERMINAL-RUNBOOK.md). Mounted by the Hub shell from its OWN Route
+# (<route>/remoteEntry.json), not through the gateway. hub-spa must allow https://<route>/* (install.sh adds it).
+# Do not set OL_HUB_API_KEY or OL_TOOL_LICENSE: the licence is checked per request with the caller's token.
+name: ol-terminal
+containerPort: 9093
+probes: {path: /health}
+route:
+  enabled: true
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 2Gi}
+persistence:
+  enabled: true
+  size: 5Gi
+  mounts:                                   # by subPath: the image's other folders under /usr/app stay visible
+    - {path: /usr/app/.ol-terminal/traffic, subPath: traffic}
+    - {path: /usr/app/data, subPath: data}
+emptyDirs: [/usr/app/.ol-terminal/logs, /tmp]
+env:
+  WORKING_MODE: HUB_INTEGRATION
+  SERVER_PORT: "9093"
+  OL_TERMINAL_MIGRATE_ON_START: "true"
+  OL_HUB_BASE_URL: "{{ .Values.global.hubInternal }}"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakPublic }}"   # browser login AND JWKS: must resolve from the pod
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  OL_MCP_OAUTH_BASE_URL: "https://{{ index .Values.global.appHosts \"ol-terminal\" }}"
+  OL_APP_LOG_LEVEL: INFO
+  JAVA_OPTS: -XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError
+secretEnv:
+  OL_ADMIN: {secret: ol-terminal-secrets, key: OL_ADMIN}
+  OL_PASSWORD: {secret: ol-terminal-secrets, key: OL_PASSWORD}
+  CREDENTIAL_ENCRYPTION_KEY: {secret: ol-terminal-secrets, key: CREDENTIAL_ENCRYPTION_KEY}

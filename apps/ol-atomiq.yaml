@@ -1,0 +1,25 @@
+# AtomIQ 1.5.3 (ATOMIQ-RUNBOOK.md). Hub remote /remotes/ol-atomiq (Hub image 17fe9420... or later). Own schema atomiq.
+# The image defaults OL_DB_TYPE=h2 (ol-db sets postgres). SETTINGS_ENCRYPTION_KEY must be 64 hex chars.
+name: ol-atomiq
+serviceName: atomiq              # Service name from before the ol- prefix (gateway upstream)
+containerPort: 8091
+probes: {path: /health}
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 1536Mi}
+emptyDirs: [/tmp]
+env:
+  APP_PORT: "8091"
+  KEYCLOAK_BASE_URL: "{{ .Values.global.keycloakInternal }}"
+  KEYCLOAK_REALM_NAME: ol-hub
+  KEYCLOAK_CLIENT_ID: hub-spa
+  KEYCLOAK_TRUST_ALL_SSL: "true"
+  OL_HUB_BACKOFFICE_URL: "{{ .Values.global.hubInternal }}/backoffice"
+  AUTH_DOMAIN: "https://{{ .Values.global.keycloakHost }}"
+  OL_MCP_BASE_URL: "https://{{ .Values.global.hubHost }}/atomiq"   # MCP through the Hub gateway
+  OL_DB_SCHEMA: atomiq
+  JAVA_OPTS: -Xmx1024m -Xms256m
+secretEnv:
+  ADMIN_PASSKEY: {secret: atomiq-secrets, key: ADMIN_PASSKEY}
+  SETTINGS_ENCRYPTION_KEY: {secret: atomiq-secrets, key: SETTINGS_ENCRYPTION_KEY}
+  CREDENTIAL_ENCRYPTION_KEY: {secret: atomiq-secrets, key: CREDENTIAL_ENCRYPTION_KEY}

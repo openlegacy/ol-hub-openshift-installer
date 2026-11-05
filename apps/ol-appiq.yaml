@@ -1,0 +1,18 @@
+# AppIQ 1.3.7 (APPIQ-RUNBOOK.md). Hub remote /remotes/appiq + /appiq. Needs ol-integration.
+# Do not set HUB_API_KEY (-> 403 on every /api), OL_PROFILE, WORKING_MODE or KEYCLOAK_* (boot error next to HUB_IAM_URL).
+name: ol-appiq
+serviceName: appiq              # Service name from before the ol- prefix (gateway upstream)
+containerPort: 8095
+probes: {path: /health}
+resources:
+  requests: {cpu: 100m, memory: 768Mi}
+  limits: {memory: 2Gi}
+env:
+  OL_APPIQ_MIGRATE_ON_START: "true"
+  HUB_IAM_URL: "{{ .Values.global.keycloakPublic }}"          # browser-facing; issuer = <this>/realms/ol-hub
+  HUB_IAM_URL_INTERNAL: "{{ .Values.global.keycloakInternal }}"
+  OL_IAM_TLS_TRUST_ALL: "true"
+  OL_HUB_URL: "{{ .Values.global.hubInternal }}"              # the gateway: /backend, /backoffice, /auth-service
+  AUTH_SERVICE_URL: "{{ .Values.global.hubInternal }}/auth-service"
+  BACKEND_CORS_ORIGINS: "*"
+  JAVA_OPTS: -Xmx1280m -Xms256m

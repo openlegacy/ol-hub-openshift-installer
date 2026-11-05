@@ -1,0 +1,40 @@
+# Filled from apps/<app>.yaml + the generated global values. String values below may use
+# {{ .Values.global.* }} (rendered with tpl).
+name: app                       # Deployment / app label
+serviceName: ""                 # default: name (the gateway and other apps address the Service by this name)
+image: ""
+imagePullPolicy: IfNotPresent
+args: []
+containerPort: 8080
+service:
+  ports:                        # default: 80 -> containerPort
+    - {name: http, port: 80}
+route:
+  enabled: false
+  host: ""                      # default: <name>-<namespace>.<appsDomain>
+  timeout: ""
+probes:
+  path: /health
+  startupFailureThreshold: 60
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 2Gi}
+
+envFromDb: true                 # envFrom global.dbSecret (OL_DB_TYPE/HOST/PORT/NAME/USER/PASSWORD)
+envFromSecrets: []              # extra whole secrets
+env: {}                         # NAME: value (tpl)
+secretEnv: {}                   # NAME: {secret: <name (tpl)>, key: <key>, optional: false}
+dbEnv: {}                       # NAME: <key in global.dbSecret> - for apps with their own DB variable names
+
+persistence:
+  enabled: false
+  size: 5Gi
+  claimName: ""                 # default: <name>-data (the installer keeps the PVC of an older install)
+  mounts: []                    # [{path: /usr/app/.x, subPath: x}]
+emptyDirs: []                   # [/tmp, ...]
+
+global:
+  appsDomain: apps.example.com
+  dbSecret: ol-db
+  storageClass: ""
+  imagePullSecret: ""
