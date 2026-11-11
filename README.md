@@ -358,6 +358,12 @@ To set one key afterwards (this restarts the app), run `./install.sh set-secret 
 | `/remotes/<app>/` 502 | The app's pod is down: `oc -n <ns> logs deploy/<app>` |
 | A release times out | `oc -n <ns> get events --sort-by=.lastTimestamp`; then re-run (idempotent). `HELM_TIMEOUT=30m ./install.sh` for slow nodes |
 
+## Known limits
+
+- **Keycloak 27** does not exist yet (newest: upstream 26.8.1, `openlegacy-keycloak` 26.8.0). Bumping is one line in `images.conf`.
+- **ol-integration** is not on public.ecr.aws yet: `IMAGE_OL_INTEGRATION` points at `public.ecr.aws/openlegacy/hub/ol-integration:4.0.0`. Push it there (or set your registry) before selecting it.
+- The Hub image must include the gateway route of every app you install (`ol-hub:4.0.0-onprem` from 2026-10-21 has all of them; an earlier build lacked AtomIQ and CoreIQ). `./install.sh status` lists every `/remotes/...` with its HTTP code.
+- AtomIQ 1.5.3's app switcher shows six apps until the image is rebuilt with the enterprise-edition fix.
 
 ## Layout
 
@@ -374,3 +380,5 @@ apps/<app>.yaml       one values file per app
 IMAGE-CONTRACT.md     what each image must provide (for the build pipelines)
 ```
 
+Sources: the runbooks in `../new/*/` (`*-RUNBOOK.md`, `CONTRACT.md`) and the apps running on `a-one`
+(env, probes, ports as of 2026-10-16). The Keycloak deployment follows `../openshift-bundle`.
