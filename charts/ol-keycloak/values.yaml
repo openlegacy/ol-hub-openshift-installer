@@ -1,6 +1,6 @@
 # Service name is fixed: apps fetch JWKS from https://hub-enterprise-keycloak/auth (443 -> 8443, self-signed).
 name: hub-enterprise-keycloak
-image: openlegacy/openlegacy-keycloak:26.8.0
+image: ""                     # set by install.sh from IMAGE_KEYCLOAK (images.conf)
 imagePullPolicy: IfNotPresent
 dbSchema: keycloak
 resources:

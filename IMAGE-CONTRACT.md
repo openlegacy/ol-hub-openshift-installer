@@ -1,7 +1,7 @@
 # On-prem image contract — what the OpenShift installer needs from each image
 
 For whoever updates a repo's CI pipeline to publish the image the installer
-(`/Users/serge/env/Openlegacy/8/ol-openshift-installer/`) deploys. Each section says what the image must
+(this repository; the ol-hub repository carries it as `ops/openshift-installer/`) deploys. Each section says what the image must
 provide, what the installer relies on, and what is known to be wrong today. Verified against the running
 install in namespace `ol-hub` on cluster07 and the `ol-hub` / `ol-integration` source (`origin/release/4.0.0`)
 on 2026-10-19/21.

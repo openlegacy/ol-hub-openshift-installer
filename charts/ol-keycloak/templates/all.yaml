@@ -36,7 +36,7 @@ spec:
       {{- end }}
       containers:
         - name: keycloak
-          image: {{ .Values.image }}
+          image: {{ required "image is required (IMAGE_KEYCLOAK in images.conf)" .Values.image }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args: [start, --import-realm]
           ports:

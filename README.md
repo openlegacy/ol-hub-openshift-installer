@@ -76,18 +76,18 @@ use. A fresh install needs under 100 MB, and the 20 GiB volume is the starting s
 |---|---|---|---|---|---|---|---|
 | PostgreSQL | `postgres:17` | – | 100m | 512 Mi / 2 Gi | 20 Gi PVC | 150 Mi | – |
 | Keycloak | `openlegacy-keycloak:26.8.0` | PostgreSQL | 200m | 768 Mi / 1.5 Gi | – (in PostgreSQL) | 800 Mi | yes |
-| Hub + gateway | `ol-hub:4.0.0-*` | PostgreSQL, Keycloak | 250m | 1 Gi / 3 Gi | – | 320 Mi | yes |
-| ol-integration | `ol-integration:4.0.0` | – | 250m | 1 Gi / 3 Gi | – | 440 Mi | – |
-| ol-termiq | `ol-termiq:1.0.5-onprem` | ol-integration | 100m | 768 Mi / 2 Gi | – | 310 Mi | – |
-| ol-dataiq | `dataiq:1.6.7` | ol-integration, ol-dataiq-batch | 100m | 1 Gi / 2 Gi | 5 Gi PVC | 460 Mi | – |
+| Hub + gateway | `ol-hub:4.0.0-onprem` | PostgreSQL, Keycloak | 250m | 1 Gi / 3 Gi | – | 320 Mi | yes |
+| ol-integration | `ol-integration:4.0.0-onprem` | – | 250m | 1 Gi / 3 Gi | – | 440 Mi | – |
+| ol-termiq | `ol-termiq:1.0.6-onprem` | ol-integration | 100m | 768 Mi / 2 Gi | – | 310 Mi | – |
+| ol-dataiq | `ol-dataiq:1.6.8-onprem` | ol-integration, ol-dataiq-batch | 100m | 1 Gi / 2 Gi | 5 Gi PVC | 460 Mi | – |
 | ol-dataiq-batch | `dataiq-batch:1.6.7` | – | 100m | 512 Mi / 1.5 Gi | – | 260 Mi | yes |
 | ol-appiq | `appiq:1.3.7-onprem-embedded-fix` | ol-integration | 100m | 768 Mi / 2 Gi | – | 390 Mi | – |
-| ol-next | `ol-next:1.7.0-onprem` | – | 100m | 768 Mi / 1.5 Gi | – (emptyDir) | 320 Mi | – |
+| ol-next | `ol-next:1.8.0-onprem` | – | 100m | 768 Mi / 1.5 Gi | – (emptyDir) | 320 Mi | – |
 | ol-spec | `olspec:1.1.8-onprem-embedded-fix2` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 390 Mi | – |
-| ol-code | `ol-code:3.0.41-onprem` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 280 Mi | yes |
+| ol-code | `ol-code:3.0.50-onprem` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 280 Mi | yes |
 | ol-terminal | `ol-terminal:2.0.7.4-onprem` | – | 100m | 512 Mi / 2 Gi | 5 Gi PVC | 370 Mi | yes |
-| ol-coreiq | `coreiq:1.7.4-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 600 Mi | – |
-| ol-atomiq | `atomiq:1.5.3-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 360 Mi | – |
+| ol-coreiq | `coreiq:1.7.11-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 600 Mi | – |
+| ol-atomiq | `atomiq:1.5.4-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 360 Mi | – |
 
 Every app stores its data in the shared PostgreSQL database, and a PVC holds only local files (keys, uploads,
 workspaces). The installer adds dependencies automatically. During install and upgrade a short-lived Job runs
@@ -360,10 +360,12 @@ To set one key afterwards (this restarts the app), run `./install.sh set-secret 
 
 ## Known limits
 
-- **Keycloak 27** does not exist yet (newest: upstream 26.8.1, `openlegacy-keycloak` 26.8.0). Bumping is one line in `images.conf`.
-- **ol-integration** is not on public.ecr.aws yet: `IMAGE_OL_INTEGRATION` points at `public.ecr.aws/openlegacy/hub/ol-integration:4.0.0`. Push it there (or set your registry) before selecting it.
+- **Keycloak** is pinned once, by `IMAGE_KEYCLOAK` in `images.conf` (`openlegacy-keycloak:26.8.0`). Keycloak does not
+  support downgrades: never install an older version over an existing realm database. The release zip from the
+  ol-hub repository takes its version from that repository's `ops/onprem/versions.env`; see `VERSION` in the zip.
 - The Hub image must include the gateway route of every app you install (`ol-hub:4.0.0-onprem` from 2026-10-21 has all of them; an earlier build lacked AtomIQ and CoreIQ). `./install.sh status` lists every `/remotes/...` with its HTTP code.
-- AtomIQ 1.5.3's app switcher shows six apps until the image is rebuilt with the enterprise-edition fix.
+- AtomIQ `1.5.3-onprem`'s app switcher shows six apps until the image is rebuilt with the enterprise-edition fix
+  (atomiq #69). The default is now `1.5.4-onprem`.
 
 ## Layout
 
@@ -377,8 +379,10 @@ charts/ol-keycloak    Keycloak + realm ol-hub template (files/realm-ol-hub.json)
 charts/ol-hub         Hub + embedded gateway + migration hook; per-app Hub switches ("integrations")
 charts/ol-app         universal chart for every optional app
 apps/<app>.yaml       one values file per app
-IMAGE-CONTRACT.md     what each image must provide (for the build pipelines)
+IMAGE-CONTRACT.md     what each image must provide (for the build pipelines; not shipped in the release zip)
 ```
 
-Sources: the runbooks in `../new/*/` (`*-RUNBOOK.md`, `CONTRACT.md`) and the apps running on `a-one`
-(env, probes, ports as of 2026-10-16). The Keycloak deployment follows `../openshift-bundle`.
+Env, probes and ports come from the apps' on-prem runbooks and a working install (as of 2026-10-16).
+The ol-hub repository carries this installer as `ops/openshift-installer/`; its release tags publish it as
+`ol-hub-installation/<version>/ol-hub-openshift-installer.zip` on the download portal, with `IMAGE_HUB`
+and `IMAGE_KEYCLOAK` stamped to that release (see `VERSION` in the zip).
