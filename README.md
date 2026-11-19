@@ -76,18 +76,18 @@ use. A fresh install needs under 100 MB, and the 20 GiB volume is the starting s
 |---|---|---|---|---|---|---|---|
 | PostgreSQL | `postgres:17` | – | 100m | 512 Mi / 2 Gi | 20 Gi PVC | 150 Mi | – |
 | Keycloak | `openlegacy-keycloak:26.8.0` | PostgreSQL | 200m | 768 Mi / 1.5 Gi | – (in PostgreSQL) | 800 Mi | yes |
-| Hub + gateway | `ol-hub:4.0.0-onprem` | PostgreSQL, Keycloak | 250m | 1 Gi / 3 Gi | – | 320 Mi | yes |
-| ol-integration | `ol-integration:4.0.0-onprem` | – | 250m | 1 Gi / 3 Gi | 10 Gi PVC (tenant artifacts) | 440 Mi | – |
+| Hub + gateway | `ol-hub:4.0.2-onprem` | PostgreSQL, Keycloak | 250m | 1 Gi / 3 Gi | – | 320 Mi | yes |
+| ol-integration | `ol-integration:4.0.1-onprem` | – | 250m | 1 Gi / 3 Gi | 10 Gi PVC (tenant artifacts) | 440 Mi | – |
 | ol-termiq | `ol-termiq:1.0.6-onprem` | ol-integration | 100m | 768 Mi / 2 Gi | – | 310 Mi | – |
-| ol-dataiq | `ol-dataiq:1.6.8-onprem` | ol-integration, ol-dataiq-batch | 100m | 1 Gi / 2 Gi | 5 Gi PVC | 460 Mi | – |
-| ol-dataiq-batch | `dataiq-batch:1.6.7` | – | 100m | 512 Mi / 1.5 Gi | – | 260 Mi | yes |
+| ol-dataiq | `ol-dataiq:1.7.0-onprem` | ol-integration, ol-dataiq-batch | 100m | 1 Gi / 2 Gi | 5 Gi PVC | 460 Mi | – |
+| ol-dataiq-batch | `dataiq-batch:1.6.8-onprem.727b16b` | – | 100m | 512 Mi / 1.5 Gi | – | 260 Mi | yes |
 | ol-appiq | `appiq:1.3.7-onprem-embedded-fix` | ol-integration | 100m | 768 Mi / 2 Gi | – | 390 Mi | – |
-| ol-next | `ol-next:1.8.0-onprem` | – | 100m | 768 Mi / 1.5 Gi | – (emptyDir) | 320 Mi | – |
-| ol-spec | `olspec:1.1.8-onprem-embedded-fix2` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 390 Mi | – |
-| ol-code | `ol-code:3.0.50-onprem` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 280 Mi | yes |
-| ol-terminal | `ol-terminal:2.0.7.4-onprem` | – | 100m | 512 Mi / 2 Gi | 5 Gi PVC | 370 Mi | yes |
-| ol-coreiq | `coreiq:1.7.11-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 600 Mi | – |
-| ol-atomiq | `atomiq:1.5.4-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 360 Mi | – |
+| ol-next | `ol-next:1.11.1-onprem` | – | 100m | 768 Mi / 1.5 Gi | – (emptyDir) | 320 Mi | – |
+| ol-spec | `olspec:1.0.1-onprem` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 390 Mi | – |
+| ol-code | `ol-code:3.0.55-onprem` | – | 100m | 768 Mi / 2 Gi | 5 Gi PVC | 280 Mi | yes |
+| ol-terminal | `ol-terminal:2.0.18-onprem` | – | 100m | 512 Mi / 2 Gi | 5 Gi PVC | 370 Mi | yes |
+| ol-coreiq | `coreiq:1.7.11-onprem.71e493e` | – | 100m | 512 Mi / 1.5 Gi | – | 600 Mi | – |
+| ol-atomiq | `atomiq:1.5.5-onprem` | – | 100m | 512 Mi / 1.5 Gi | – | 360 Mi | – |
 
 Every app stores its data in the shared PostgreSQL database, and a PVC holds only local files (keys, uploads,
 workspaces). The installer adds dependencies automatically. During install and upgrade a short-lived Job runs
@@ -369,7 +369,7 @@ To set one key afterwards (this restarts the app), run `./install.sh set-secret 
   ol-hub repository takes its version from that repository's `ops/onprem/versions.env`; see `VERSION` in the zip.
 - The Hub image must include the gateway route of every app you install (`ol-hub:4.0.0-onprem` from 2026-10-21 has all of them; an earlier build lacked AtomIQ and CoreIQ). `./install.sh status` lists every `/remotes/...` with its HTTP code.
 - AtomIQ `1.5.3-onprem`'s app switcher shows six apps until the image is rebuilt with the enterprise-edition fix
-  (atomiq #69). The default is now `1.5.4-onprem`.
+  (atomiq #69). The default is now `1.5.5-onprem`.
 
 ## Layout
 
