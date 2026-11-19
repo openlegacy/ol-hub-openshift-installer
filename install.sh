@@ -31,6 +31,8 @@ source "$ROOT/lib/db.sh"
 source "$ROOT/lib/keycloak.sh"
 # shellcheck source=lib/tenant.sh
 source "$ROOT/lib/tenant.sh"
+# shellcheck source=lib/carry.sh
+source "$ROOT/lib/carry.sh"
 
 while (( $# )); do
   case $1 in
@@ -130,8 +132,11 @@ install_app() {
       oc -n "$NAMESPACE" wait pod -l "app=$old" --for=delete --timeout=180s >/dev/null 2>&1 || true
     fi
   fi
+  # an install from before the app had its volume: its files move onto the volume (lib/carry.sh)
+  if carry_needed "$a"; then carry_out "$a"; fi
   helm_up "$rel" "$ROOT/charts/ol-app" -f "$ROOT/apps/$a.yaml" \
     --set-string "image=$img" --set-string "imagePullPolicy=$IMAGE_PULL_POLICY" --set-string "persistence.claimName=$pvc"
+  [[ "$DRY_RUN" == true ]] || carry_in "$a"
 }
 
 do_install() {

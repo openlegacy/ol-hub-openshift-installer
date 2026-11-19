@@ -56,7 +56,7 @@ measured on a working install with all apps (cluster07, namespace `ol-hub`, 2026
 | Footprint | CPU request | Memory request | Memory limit | Persistent storage | Idle memory (measured) |
 |---|---|---|---|---|---|
 | Core only (PostgreSQL + Keycloak + Hub) | 0.55 vCPU | 2.3 GiB | 6.5 GiB | 20 GiB | 1.3 GiB |
-| Core + all 11 apps | 1.8 vCPU | 10 GiB | 28 GiB | 40 GiB (5 PVCs) | 5.4 GiB |
+| Core + all 11 apps | 1.8 vCPU | 10 GiB | 28 GiB | 50 GiB (6 PVCs) | 5.4 GiB |
 
 Recommended free capacity on the worker nodes:
 
@@ -64,7 +64,7 @@ Recommended free capacity on the worker nodes:
 |---|---|---|---|
 | Core only (evaluation) | 2 | 8 GiB | 20 GiB |
 | Core + a few apps | 4 | 16 GiB | 30 GiB |
-| Core + all apps | 4–6 | 32 GiB | 40 GiB |
+| Core + all apps | 4–6 | 32 GiB | 50 GiB |
 
 With all apps the largest single pod limit is 3 GiB (Hub, OL-Integration), so any worker with ≥ 4 GiB free can
 run any pod. The reference cluster has 4 workers × 3.5 vCPU / 15 GiB allocatable. The database grows with
@@ -77,7 +77,7 @@ use. A fresh install needs under 100 MB, and the 20 GiB volume is the starting s
 | PostgreSQL | `postgres:17` | – | 100m | 512 Mi / 2 Gi | 20 Gi PVC | 150 Mi | – |
 | Keycloak | `openlegacy-keycloak:26.8.0` | PostgreSQL | 200m | 768 Mi / 1.5 Gi | – (in PostgreSQL) | 800 Mi | yes |
 | Hub + gateway | `ol-hub:4.0.0-onprem` | PostgreSQL, Keycloak | 250m | 1 Gi / 3 Gi | – | 320 Mi | yes |
-| ol-integration | `ol-integration:4.0.0-onprem` | – | 250m | 1 Gi / 3 Gi | – | 440 Mi | – |
+| ol-integration | `ol-integration:4.0.0-onprem` | – | 250m | 1 Gi / 3 Gi | 10 Gi PVC (tenant artifacts) | 440 Mi | – |
 | ol-termiq | `ol-termiq:1.0.6-onprem` | ol-integration | 100m | 768 Mi / 2 Gi | – | 310 Mi | – |
 | ol-dataiq | `ol-dataiq:1.6.8-onprem` | ol-integration, ol-dataiq-batch | 100m | 1 Gi / 2 Gi | 5 Gi PVC | 460 Mi | – |
 | ol-dataiq-batch | `dataiq-batch:1.6.7` | – | 100m | 512 Mi / 1.5 Gi | – | 260 Mi | yes |
@@ -191,8 +191,12 @@ Common options: `-c <file>` config file (default `install.conf`), `-y` no questi
 - **Upgrade an app:** change its line in `images.conf` (or override it in `install.conf`), then re-run `./install.sh`.
 - **Re-runs are safe.** Apps already installed always stay installed and switched on, whatever `APPS` says
   (use `remove` to take one out). `remove` refuses to remove an app another installed app needs.
-- **Back up** the PostgreSQL volume (or `pg_dump`) **together with the secrets**. The encryption keys in them
-  are needed to read the data.
+- **ol-integration's volume** (`ol-integration-data`, tenant artifacts) is new in this version. On an install made
+  before it, the next `./install.sh` copies the files from the running pod onto the volume (kept in
+  `generated/carry/` until they are there; an interrupted run is finished by the next one).
+- **Back up** the PostgreSQL volume (or `pg_dump`) **together with the secrets** and the `ol-integration-data`
+  volume (tenant artifacts the database points to: generated services, projects, exports). The encryption keys in
+  the secrets are needed to read the data.
 
 ---
 

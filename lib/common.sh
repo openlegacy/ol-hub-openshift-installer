@@ -32,6 +32,9 @@ confirm() {   # confirm "question" -> 0 on yes
 
 need() { command -v "$1" >/dev/null 2>&1 || die "'$1' is required but not installed."; }
 
+# kubectl-style calls in files shared with the EKS installer (lib/carry.sh) - oc here
+kube() { oc "$@"; }
+
 # ---- app catalog ---------------------------------------------------------------------------------
 # App names (what APPS, add and remove take; also the Helm release names) all carry the ol- prefix.
 # Install order matters: ol-integration before the apps that call /backend, ol-dataiq-batch before ol-dataiq.
@@ -67,6 +70,11 @@ for __a in "${!APP_ALIAS[@]}"; do APP_FROM_ALIAS[${APP_ALIAS[$__a]}]=$__a; done;
 APPS_WITH_ROUTE=(ol-code ol-terminal ol-dataiq-batch)
 # Apps the Hub switches on in its shell/gateway (ol-hub chart "apps.<name>")
 APPS_IN_HUB=(ol-integration ol-termiq ol-dataiq ol-appiq ol-next ol-spec ol-code ol-terminal ol-coreiq ol-atomiq)
+# Apps that got a volume after their first release: the paths (= their persistence.mounts in apps/<app>.yaml)
+# that an older install keeps in the container and lib/carry.sh moves onto the new volume once
+declare -A APP_CARRY=(
+  [ol-integration]="/home/ubuntu/ol-hub-tenant-artifacts /home/ubuntu/.ol"
+)
 
 app_obj() { echo "${APP_OLD_NAME[$1]:-$1}"; }   # prefix of the app's Service / secret names
 

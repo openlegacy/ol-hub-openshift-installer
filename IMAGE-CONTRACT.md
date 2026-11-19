@@ -106,9 +106,12 @@ app from the Hub shell in a browser.
 | Env | `apps/ol-integration.yaml` — matches `ops/onprem/docker-compose.consumer.yml` + `consumer.env.example`; the three Hub secrets must equal the Hub's |
 | At boot | migrates its schemas, then for **every ACTIVE tenant** creates `data_<tenant>` (incl. demo project `demo-account-details`) and seeds admin `9a780e8b-...` if the tenant has none (`SetDefaultUserRoleCallback`). Needs `operational.tenant` to exist (the Hub migrated) |
 
-- **Gap for the installer (not the image):** it writes tenant artifacts under `user.home` — `/home/ubuntu/ol-hub-tenant-artifacts`
-  and `/home/ubuntu/.ol` (compose and its Helm chart mount volumes there). `apps/ol-integration.yaml` has no volume
-  yet, so they are lost on restart. If the image changes these paths, say so.
+- Tenant artifacts (generated services, projects, repository exports, uploads) are written under `user.home` —
+  the entrypoint pins `-Duser.home=$USER_HOME` = `/home/ubuntu` — in `ol-hub-tenant-artifacts/<tenant>/…`, and the
+  app keeps state in `/home/ubuntu/.ol`. The installer mounts the PVC `ol-integration-data` there (sub-paths `artifacts`,
+  `ol`; `apps/ol-integration.yaml`), as the official chart (`hubEnterprise.storage`) and the consumer compose do. An
+  install from before that volume is carried over once (`lib/carry.sh`). If the image changes these paths or
+  `user.home`, say so: the artifacts would land outside the volume and be lost on restart.
 - Wanted from the pipeline: publish the consumer-mode image to public.ecr.aws under the name above, built from
   `release/4.0.0` (or wherever the consumer launcher lands next).
 

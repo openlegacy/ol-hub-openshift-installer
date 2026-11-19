@@ -11,6 +11,17 @@ probes: {path: /health}
 resources:
   requests: {cpu: 250m, memory: 1Gi}
   limits: {memory: 3Gi}
+# Tenant artifacts: generated services, projects (.opz), repository exports (.orz), uploads. The on-prem storage
+# service writes them under user.home (the entrypoint pins -Duser.home=/home/ubuntu), bucket
+# ol-hub-tenant-artifacts - as the official chart's hubEnterprise.storage mount. ~/.ol as the on-prem consumer
+# compose (ol-integration-data). The database references these files: back the volume up with it.
+# An install made before this volume existed is carried over once by install.sh (APP_CARRY in lib/common.sh).
+persistence:
+  enabled: true
+  size: 10Gi
+  mounts:
+    - {path: /home/ubuntu/ol-hub-tenant-artifacts, subPath: artifacts}
+    - {path: /home/ubuntu/.ol, subPath: ol}
 env:
   LAUNCHER_CLASS: io.ol.hub.enterprise.consumer.ConsumerLauncherKt
   MAIN_CLASS: io.ol.hub.enterprise.consumer.ConsumerMainVerticle
